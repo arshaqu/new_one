@@ -1,0 +1,797 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+
+const countries = [
+
+{
+code:"IN",
+flag:"🇮🇳",
+name:"India",
+currency:"INR",
+symbol:"₹",
+tax:1.18
+},
+
+{
+code:"AE",
+flag:"🇦🇪",
+name:"UAE",
+currency:"AED",
+symbol:"د.إ",
+tax:1.05
+},
+
+{
+code:"SA",
+flag:"🇸🇦",
+name:"Saudi Arabia",
+currency:"SAR",
+symbol:"﷼",
+tax:1.08
+},
+
+{
+code:"US",
+flag:"🇺🇸",
+name:"USA",
+currency:"USD",
+symbol:"$",
+tax:1.02
+},
+
+{
+code:"UK",
+flag:"🇬🇧",
+name:"UK",
+currency:"GBP",
+symbol:"£",
+tax:1.03
+}
+
+];
+
+
+
+const CACHE_TIME = 24 * 60 * 60 * 1000;
+
+
+
+export default function GoldRatePage(){
+
+
+
+const [country,setCountry] = useState("IN");
+
+
+const [gold,setGold] = useState<number | null>(null);
+
+
+const [exchange,setExchange] = useState(1);
+
+
+const [updated,setUpdated] = useState("");
+
+
+
+const [weight,setWeight] = useState("10");
+
+
+const [copied,setCopied] = useState(false);
+
+
+
+const selectedCountry =
+countries.find(
+c=>c.code===country
+);
+
+
+
+function getGoldPrice(
+purity:number
+){
+
+if(!gold) return 0;
+
+
+return (
+gold *
+purity
+);
+
+}
+
+
+
+
+async function fetchGold(){
+
+
+try{
+
+
+const saved =
+localStorage.getItem("gold-rate");
+
+
+
+if(saved){
+
+
+const data =
+JSON.parse(saved);
+
+
+
+if(
+Date.now()-data.time
+<
+CACHE_TIME
+){
+
+setGold(data.gold);
+
+setExchange(data.exchange);
+
+setUpdated(
+new Date(data.time)
+.toLocaleString()
+);
+
+return;
+
+}
+
+}
+
+
+
+
+
+// Gold price API
+
+const goldResponse =
+await fetch(
+"https://api.metals.live/v1/spot/gold"
+);
+
+
+
+const goldData =
+await goldResponse.json();
+
+
+
+const usdPerOunce =
+goldData[0].price;
+
+
+
+const gramUSD =
+usdPerOunce / 31.1035;
+
+
+
+
+// currency rates
+
+const currencyResponse =
+await fetch(
+"https://open.er-api.com/v6/latest/USD"
+);
+
+
+
+const currencyData =
+await currencyResponse.json();
+
+
+
+const rate =
+currencyData.rates[
+selectedCountry?.currency || "INR"
+];
+
+
+
+const finalGold =
+gramUSD * rate *
+(selectedCountry?.tax || 1);
+
+
+
+const cache = {
+
+gold:finalGold,
+
+exchange:rate,
+
+time:Date.now()
+
+};
+
+
+
+localStorage.setItem(
+"gold-rate",
+JSON.stringify(cache)
+);
+
+
+
+setGold(finalGold);
+
+
+setExchange(rate);
+
+
+
+setUpdated(
+new Date()
+.toLocaleString()
+);
+
+
+
+}
+
+catch(error){
+
+console.log(error);
+
+}
+
+
+
+}
+
+
+
+
+
+useEffect(()=>{
+
+fetchGold();
+
+},[country]);
+
+
+
+
+
+function gramsValue(
+purity:number
+){
+
+return (
+
+getGoldPrice(purity)
+*
+Number(weight)
+
+);
+
+}
+
+
+
+
+
+function copyRates(){
+
+
+const text = `
+
+Gold Rate Today
+
+${selectedCountry?.name}
+
+24K:
+${selectedCountry?.symbol}
+${getGoldPrice(1).toFixed(0)}
+
+22K:
+${selectedCountry?.symbol}
+${getGoldPrice(.916).toFixed(0)}
+
+21K:
+${selectedCountry?.symbol}
+${getGoldPrice(.875).toFixed(0)}
+
+18K:
+${selectedCountry?.symbol}
+${getGoldPrice(.75).toFixed(0)}
+
+`;
+
+
+
+navigator.clipboard.writeText(text);
+
+
+
+setCopied(true);
+
+
+setTimeout(()=>{
+
+setCopied(false);
+
+},2000);
+
+
+
+}
+
+
+
+
+
+return (
+
+<div
+
+className="min-h-screen px-6 py-12"
+
+style={{
+
+background:"var(--background)",
+
+color:"var(--foreground)"
+
+}}
+
+>
+
+
+<div className="max-w-4xl mx-auto">
+
+
+
+<div className="text-sm text-muted">
+
+<Link
+href="/"
+className="hover:text-blue-500"
+>
+Home
+</Link>
+
+{" / "}
+
+<span>
+Live Rates
+</span>
+
+{" / "}
+
+<span>
+Gold Rate Today
+</span>
+
+</div>
+
+
+
+
+
+<h1 className="text-5xl font-bold mt-6">
+
+Gold Rate Today
+
+</h1>
+
+
+
+
+<p className="mt-3 text-muted">
+
+Live gold price today for 24K, 22K, 21K and 18K per gram.
+Select your country to see local retail rates.
+
+</p>
+
+
+
+
+
+<div className="mt-8 bg-card border rounded-xl p-6">
+
+
+
+
+
+<label className="text-sm text-muted">
+
+Select Country
+
+</label>
+
+
+<select
+
+value={country}
+
+onChange={
+e=>setCountry(e.target.value)
+}
+
+className="mt-2 w-full bg-input border rounded-md px-3 py-2"
+
+>
+
+
+{
+countries.map(c=>(
+
+<option
+key={c.code}
+value={c.code}
+>
+
+{c.flag} {c.name} ({c.currency})
+
+</option>
+
+))
+
+}
+
+
+</select>
+
+
+
+
+
+
+
+<div className="mt-8 border rounded-xl p-6">
+
+
+
+<p className="text-sm text-muted">
+
+LBMA international gold spot price
+
+</p>
+
+
+
+<p className="mt-2 text-sm">
+
+Updated:
+{" "}
+{updated || "Loading..."}
+
+</p>
+
+
+
+
+<div className="grid md:grid-cols-2 gap-5 mt-6">
+
+
+{
+
+[
+
+["24K","1"],
+
+["22K",".916"],
+
+["21K",".875"],
+
+["18K",".75"]
+
+].map(item=>(
+
+
+<div
+
+key={item[0]}
+
+className="border rounded-xl p-5"
+
+>
+
+
+<p className="text-muted">
+
+{item[0]} Karat
+
+</p>
+
+
+<h2 className="text-3xl font-bold mt-3">
+
+{selectedCountry?.symbol}
+
+{
+gold
+?
+getGoldPrice(
+Number(item[1])
+)
+.toLocaleString(
+"en-IN",
+{
+maximumFractionDigits:0
+}
+)
+
+:
+
+"Loading..."
+}
+
+
+</h2>
+
+
+<p className="text-sm text-muted mt-2">
+
+per gram
+
+</p>
+
+
+</div>
+
+
+))
+
+
+}
+
+
+
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+<div className="mt-8 bg-card border rounded-xl p-6">
+
+
+<h2 className="text-2xl font-bold">
+
+Gold Value Calculator
+
+</h2>
+
+
+
+<label className="block mt-5 text-sm text-muted">
+
+Weight (grams)
+
+</label>
+
+
+
+<input
+
+value={weight}
+
+onChange={
+e=>setWeight(e.target.value)
+}
+
+className="mt-2 bg-input border rounded-md px-3 py-2 w-full"
+
+/>
+
+
+
+
+
+<div className="mt-5 space-y-3">
+
+
+{
+
+[
+
+["24K",1],
+
+["22K",.916],
+
+["21K",.875],
+
+["18K",.75]
+
+].map(item=>(
+
+
+<div
+
+key={item[0]}
+
+className="flex justify-between border-b pb-3"
+
+>
+
+
+<span>
+
+{item[0]}
+
+</span>
+
+
+<b>
+
+{selectedCountry?.symbol}
+
+{
+gramsValue(
+Number(item[1])
+)
+.toLocaleString(
+"en-IN",
+{
+maximumFractionDigits:0
+}
+)
+}
+
+</b>
+
+
+</div>
+
+
+))
+
+
+}
+
+
+
+</div>
+
+
+
+<button
+
+onClick={copyRates}
+
+className="mt-6 bg-indigo-600 text-white px-5 py-2 rounded-md"
+
+>
+
+{
+copied
+?
+"✓ Copied"
+:
+"📋 Copy"
+}
+
+</button>
+
+
+
+</div>
+
+
+
+
+
+
+<section className="mt-12">
+
+
+<h2 className="text-2xl font-bold">
+
+Quick Select
+
+</h2>
+
+
+
+<div className="flex flex-wrap gap-3 mt-5">
+
+
+{
+
+countries.map(c=>(
+
+
+<button
+
+key={c.code}
+
+onClick={
+()=>setCountry(c.code)
+}
+
+className="border px-4 py-2 rounded-md"
+
+>
+
+{c.flag} {c.name}
+
+</button>
+
+
+))
+
+
+}
+
+
+
+</div>
+
+
+</section>
+
+
+
+
+
+
+<section className="mt-12 pb-10">
+
+
+<h2 className="text-2xl font-bold">
+
+How It Works
+
+</h2>
+
+
+<p className="mt-4 text-muted leading-7">
+
+Gold prices are calculated using international
+gold spot prices and converted into your local
+currency. Rates refresh automatically every
+24 hours.
+
+</p>
+
+
+
+<p className="mt-4 text-muted leading-7">
+
+Actual jewellery prices may vary because of
+making charges, GST, dealer margins and
+market fluctuations.
+
+</p>
+
+
+
+</section>
+
+
+
+
+</div>
+
+</div>
+
+
+);
+
+}
