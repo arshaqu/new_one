@@ -61,7 +61,7 @@ function shuffle<T>(arr: T[]): T[] {
 }
 
 export default function Home() {
-  const [active, setActive] = useState(null);
+  const [active, setActive] = useState<number | null>(null);
   const [query, setQuery] = useState("");
 
   const allTools = useMemo(
@@ -76,8 +76,12 @@ export default function Home() {
     []
   );
 
+  // Derive the tool shape once, from allTools itself, so featured/searchResults/
+  // activeTools all share one consistent type instead of inferring `never[]`.
+  type Tool = (typeof allTools)[number];
+
   // Client-only shuffle to avoid the server/client hydration mismatch.
-  const [featured, setFeatured] = useState([]);
+  const [featured, setFeatured] = useState<Tool[]>([]);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
