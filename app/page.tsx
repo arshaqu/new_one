@@ -382,7 +382,7 @@ export default function Home() {
                 <button
                   onClick={() => setActive(null)}
                   className="tb-pulse-soft ml-auto px-2.5 py-1 rounded text-[10px] shrink-0 text-muted hover:bg-input"
-                  style={{ cursor: "pointer", "--tb-pulse-color": "rgba(255,179,0,0.4)" }}
+                  style={{ cursor: "pointer", "--tb-pulse-color": "rgba(255,179,0,0.4)" } as React.CSSProperties}
                 >
                   View all
                 </button>
